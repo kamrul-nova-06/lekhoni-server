@@ -1,13 +1,15 @@
 {
   "version": 2,
-  "rewrites": [
+  "redirects": [
     {
       "source": "/admin",
-      "destination": "/api/admin-panel"
+      "destination": "/admin.html",
+      "permanent": false
     },
     {
       "source": "/admin/",
-      "destination": "/api/admin-panel"
+      "destination": "/admin.html",
+      "permanent": false
     }
   ]
 }
