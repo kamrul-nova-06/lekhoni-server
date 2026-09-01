@@ -7,7 +7,7 @@ require('dotenv').config();
 const { PORT } = require('./config/env');
 
 // Initialize database.
-require('./database/database');
+const db = require('./database/database');
 
 const activationRoutes = require('./activation/activation.routes');
 const adminRoutes = require('./admin/admin.routes');
@@ -23,6 +23,26 @@ app.get('/admin', (req, res) => {
 
 app.get('/api/admin-panel', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/admin.html'));
+});
+
+app.get('/api/settings/whatsapp', (req, res) => {
+  try {
+    const row = db.prepare(
+      "SELECT value FROM settings WHERE key = 'whatsapp'"
+    ).get();
+
+    res.json({
+      success: true,
+      whatsapp: row?.value || ''
+    });
+  } catch (error) {
+    console.error('WhatsApp settings error:', error);
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to load WhatsApp settings'
+    });
+  }
 });
 
 app.get('/admin/', (req, res) => {
