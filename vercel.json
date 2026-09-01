@@ -4,14 +4,6 @@
     {
       "source": "/",
       "destination": "/api"
-    },
-    {
-      "source": "/admin",
-      "destination": "/api/admin"
-    },
-    {
-      "source": "/admin/",
-      "destination": "/api/admin/"
     }
   ]
 }
