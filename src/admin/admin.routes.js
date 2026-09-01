@@ -1,8 +1,11 @@
 const express = require('express');
 const crypto = require('crypto');
 const db = require('../database/database');
+const adminAuth = require('../middleware/adminAuth');
 
 const router = express.Router();
+
+router.use(adminAuth);
 
 router.post('/activation/create', (req, res) => {
   try {
@@ -39,6 +42,48 @@ router.get('/activations', (req, res) => {
   res.json({
     success: true,
     activations,
+  });
+});
+
+
+router.get('/settings', (req, res) => {
+  const rows = db.prepare(`
+    SELECT key, value
+    FROM settings
+    ORDER BY key
+  `).all();
+
+  const settings = {};
+  for (const row of rows) {
+    settings[row.key] = row.value;
+  }
+
+  res.json({
+    success: true,
+    settings,
+  });
+});
+
+router.post('/settings/whatsapp', (req, res) => {
+  const { whatsapp } = req.body;
+
+  if (!whatsapp || typeof whatsapp !== 'string') {
+    return res.status(400).json({
+      success: false,
+      message: 'WhatsApp number is required',
+    });
+  }
+
+  db.prepare(`
+    INSERT INTO settings (key, value)
+    VALUES ('whatsapp', ?)
+    ON CONFLICT(key)
+    DO UPDATE SET value = excluded.value
+  `).run(whatsapp.trim());
+
+  res.json({
+    success: true,
+    whatsapp: whatsapp.trim(),
   });
 });
 

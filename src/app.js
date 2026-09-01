@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 
 require('dotenv').config();
@@ -15,6 +16,14 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/admin.html'));
+});
+
+app.get('/admin/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/admin.html'));
+});
 
 app.get('/', (req, res) => {
   res.json({

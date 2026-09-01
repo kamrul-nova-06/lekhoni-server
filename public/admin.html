@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lekhoni Admin Panel</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#f4f6f8;
+  color:#17202a
+}
+.container{
+  max-width:1000px;
+  margin:auto;
+  padding:20px
+}
+.card{
+  background:white;
+  border-radius:16px;
+  padding:22px;
+  margin-bottom:18px;
+  box-shadow:0 4px 18px #00000012
+}
+h1{margin-top:0}
+h2{margin-top:0;font-size:20px}
+input{
+  width:100%;
+  padding:13px;
+  border:1px solid #ccd2d8;
+  border-radius:10px;
+  margin:7px 0 12px;
+  font-size:16px
+}
+button{
+  border:0;
+  border-radius:10px;
+  padding:12px 18px;
+  font-size:15px;
+  cursor:pointer;
+  background:#111827;
+  color:white
+}
+button.secondary{background:#4b5563}
+button.danger{background:#b91c1c}
+.hidden{display:none}
+.status{
+  padding:12px;
+  border-radius:10px;
+  margin:10px 0
+}
+.success{background:#dcfce7;color:#166534}
+.error{background:#fee2e2;color:#991b1b}
+.key{
+  font-family:monospace;
+  font-size:18px;
+  font-weight:bold;
+  letter-spacing:1px
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:12px
+}
+th,td{
+  padding:11px;
+  border-bottom:1px solid #e5e7eb;
+  text-align:left
+}
+.badge{
+  padding:5px 9px;
+  border-radius:20px;
+  background:#dcfce7;
+  color:#166534;
+  font-size:12px
+}
+@media(max-width:650px){
+  table{font-size:13px}
+  th:nth-child(1),td:nth-child(1){display:none}
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <div id="loginCard" class="card">
+    <h1>🔐 Lekhoni Admin</h1>
+    <p>Admin Secret দিয়ে প্রবেশ করুন।</p>
+
+    <input
+      id="secret"
+      type="password"
+      placeholder="ADMIN_SECRET"
+      autocomplete="off"
+    >
+
+    <button onclick="login()">Login</button>
+
+    <div id="loginStatus"></div>
+  </div>
+
+  <div id="panel" class="hidden">
+
+    <div class="card">
+      <h1>⚙️ Lekhoni Admin Panel</h1>
+      <button class="secondary" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="card">
+      <h2>🎟️ Activation Key তৈরি করুন</h2>
+
+      <button onclick="createKey()">
+        + Generate Activation Key
+      </button>
+
+      <div id="newKey"></div>
+    </div>
+
+    <div class="card">
+      <h2>📱 WhatsApp Number</h2>
+
+      <input
+        id="whatsapp"
+        type="text"
+        placeholder="যেমন: 8801XXXXXXXXX"
+      >
+
+      <button onclick="saveWhatsapp()">
+        Save WhatsApp
+      </button>
+
+      <div id="whatsappStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Activation Keys</h2>
+
+      <button class="secondary" onclick="loadKeys()">
+        Refresh
+      </button>
+
+      <div id="keys"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let adminSecret = '';
+
+function showStatus(id, message, ok=false) {
+  const el = document.getElementById(id);
+  el.className = 'status ' + (ok ? 'success' : 'error');
+  el.textContent = message;
+}
+
+async function api(url, options={}) {
+  options.headers = {
+    ...(options.headers || {}),
+    'Authorization': 'Bearer ' + adminSecret,
+    'Content-Type': 'application/json'
+  };
+
+  const response = await fetch(url, options);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Request failed');
+  }
+
+  return data;
+}
+
+async function login() {
+  const secret = document.getElementById('secret').value.trim();
+
+  if (!secret) {
+    showStatus('loginStatus', 'Admin Secret দিন।');
+    return;
+  }
+
+  adminSecret = secret;
+
+  try {
+    await api('/api/admin/activations');
+
+    document.getElementById('loginCard').classList.add('hidden');
+    document.getElementById('panel').classList.remove('hidden');
+
+    await loadKeys();
+    await loadWhatsapp();
+
+  } catch (e) {
+    adminSecret = '';
+    showStatus('loginStatus', e.message || 'Login failed');
+  }
+}
+
+function logout() {
+  adminSecret = '';
+  document.getElementById('secret').value = '';
+  document.getElementById('panel').classList.add('hidden');
+  document.getElementById('loginCard').classList.remove('hidden');
+}
+
+async function createKey() {
+  const box = document.getElementById('newKey');
+  box.innerHTML = '';
+
+  try {
+    const data = await api('/api/admin/activation/create', {
+      method: 'POST',
+      body: '{}'
+    });
+
+    box.innerHTML = `
+      <div class="status success">
+        <div>নতুন Activation Key:</div>
+        <div class="key">${escapeHtml(data.activationCode)}</div>
+      </div>
+    `;
+
+    await loadKeys();
+
+  } catch (e) {
+    box.innerHTML =
+      '<div class="status error">' +
+      escapeHtml(e.message) +
+      '</div>';
+  }
+}
+
+async function loadKeys() {
+  const box = document.getElementById('keys');
+
+  try {
+    const data = await api('/api/admin/activations');
+
+    if (!data.activations || data.activations.length === 0) {
+      box.innerHTML = '<p>এখনো কোনো Activation Key নেই।</p>';
+      return;
+    }
+
+    let html = `
+      <table>
+        <tr>
+          <th>ID</th>
+          <th>Activation Key</th>
+          <th>Device</th>
+          <th>Status</th>
+          <th>Created</th>
+        </tr>
+    `;
+
+    for (const item of data.activations) {
+      html += `
+        <tr>
+          <td>${escapeHtml(String(item.id))}</td>
+          <td class="key">${escapeHtml(item.activation_code)}</td>
+          <td>${escapeHtml(item.device_id || 'Not used')}</td>
+          <td><span class="badge">${escapeHtml(item.status)}</span></td>
+          <td>${escapeHtml(item.created_at || '')}</td>
+        </tr>
+      `;
+    }
+
+    html += '</table>';
+    box.innerHTML = html;
+
+  } catch (e) {
+    box.innerHTML =
+      '<div class="status error">' +
+      escapeHtml(e.message) +
+      '</div>';
+  }
+}
+
+async function loadWhatsapp() {
+  try {
+    const data = await api('/api/admin/settings');
+
+    if (data.settings && data.settings.whatsapp) {
+      document.getElementById('whatsapp').value =
+        data.settings.whatsapp;
+    }
+
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function saveWhatsapp() {
+  const number =
+    document.getElementById('whatsapp').value.trim();
+
+  if (!number) {
+    showStatus(
+      'whatsappStatus',
+      'WhatsApp number দিন।'
+    );
+    return;
+  }
+
+  try {
+    await api('/api/admin/settings/whatsapp', {
+      method: 'POST',
+      body: JSON.stringify({
+        whatsapp: number
+      })
+    });
+
+    showStatus(
+      'whatsappStatus',
+      'WhatsApp number saved successfully.',
+      true
+    );
+
+  } catch (e) {
+    showStatus(
+      'whatsappStatus',
+      e.message || 'Save failed'
+    );
+  }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+</script>
+
+</body>
+</html>
