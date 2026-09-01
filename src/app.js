@@ -1,7 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+
+require('dotenv').config();
+
 const { PORT } = require('./config/env');
 
+// Initialize database.
 require('./database/database');
 
 const activationRoutes = require('./activation/activation.routes');
@@ -19,9 +23,23 @@ app.get('/', (req, res) => {
   });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'ok',
+    service: 'lekhoni-server',
+  });
+});
+
 app.use('/api/activation', activationRoutes);
 app.use('/api/admin', adminRoutes);
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Lekhoni Server running on port ${PORT}`);
-});
+// Local / Render server.
+// Vercel imports the Express app directly.
+if (!process.env.VERCEL) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Lekhoni Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
