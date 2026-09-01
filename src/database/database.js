@@ -1,8 +1,24 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
+
 const { DB_PATH } = require('../config/env');
 
-const db = new Database(path.resolve(DB_PATH));
+const resolvedDbPath = path.resolve(DB_PATH);
+
+// Make sure the parent directory exists.
+// This is important for Render's /var/data persistent disk.
+const dbDirectory = path.dirname(resolvedDbPath);
+
+if (!fs.existsSync(dbDirectory)) {
+  fs.mkdirSync(dbDirectory, {
+    recursive: true,
+  });
+}
+
+console.log(`SQLite database: ${resolvedDbPath}`);
+
+const db = new Database(resolvedDbPath);
 
 db.pragma('journal_mode = WAL');
 
