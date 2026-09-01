@@ -2,8 +2,12 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/api"
+      "source": "/admin",
+      "destination": "/api/admin-panel"
+    },
+    {
+      "source": "/admin/",
+      "destination": "/api/admin-panel"
     }
   ]
 }
